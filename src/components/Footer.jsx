@@ -1,4 +1,4 @@
-import { HeartHandshake, Shield, Sparkles, BookOpen } from 'lucide-react';
+import { HeartHandshake, Shield, BookOpen } from 'lucide-react';
 import { SIGN_PHRASES } from '../data/signPhrases';
 
 export default function Footer({ onOpenInfo }) {

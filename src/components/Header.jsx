@@ -1,5 +1,4 @@
-import React from 'react';
-import { Sparkles, Video, Volume2, ShieldCheck, HeartHandshake } from 'lucide-react';
+import { Sparkles, ShieldCheck, HeartHandshake } from 'lucide-react';
 
 export default function Header({ onOpenInfo }) {
   return (

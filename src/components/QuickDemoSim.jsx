@@ -1,28 +1,41 @@
-import React from 'react';
-import { PlayCircle, Sparkles, Info, ShieldAlert } from 'lucide-react';
+import { useState } from 'react';
+import { Sparkles, Info, Search, Filter } from 'lucide-react';
+import { SIGN_PHRASES } from '../data/signPhrases';
 
-const SAMPLE_DEMO_SIGNS = [
-  { name: "Hello", phrase: "Hello", confidence: 0.96, emoji: "👋" },
-  { name: "Thank you", phrase: "Thank you", confidence: 0.94, emoji: "🙏" },
-  { name: "Help me", phrase: "Help me", confidence: 0.92, emoji: "🆘" },
-  { name: "How are you?", phrase: "How are you?", confidence: 0.89, emoji: "🤝" },
-  { name: "I need water", phrase: "I need water", confidence: 0.91, emoji: "💧" },
-  { name: "Yes", phrase: "Yes", confidence: 0.97, emoji: "👍" },
-  { name: "No", phrase: "No", confidence: 0.95, emoji: "👎" },
-  { name: "I love you", phrase: "I love you", confidence: 0.98, emoji: "🤟" }
+const CATEGORIES = [
+  "All",
+  "Greetings",
+  "Courtesy",
+  "Daily Needs",
+  "Emergency & Assistance",
+  "Expressions",
+  "Responses",
+  "Numbers",
+  "Conversation"
 ];
 
 export default function QuickDemoSim({ onSimulateSign, isDemoActive, onToggleDemo }) {
+  const [selectedCategory, setSelectedCategory] = useState("All");
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredSigns = SIGN_PHRASES.filter(item => {
+    const matchesCat = selectedCategory === "All" || item.category === selectedCategory;
+    const matchesQuery = !searchQuery.trim() || 
+      item.phrase.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (item.aliases && item.aliases.some(a => a.toLowerCase().includes(searchQuery.toLowerCase())));
+    return matchesCat && matchesQuery;
+  });
+
   return (
     <div className="demo-sim-card">
       <div className="demo-sim-header">
         <div className="demo-header-left">
           <div className="demo-badge">
             <Sparkles size={14} className="text-amber-500" />
-            <span>Evaluation Demo Mode</span>
+            <span>Evaluation & Gesture Simulator</span>
           </div>
           <span className="demo-header-sub">
-            Simulate recognized sign gestures to evaluate text & speech without camera
+            Simulate any of the {SIGN_PHRASES.length} supported gestures to test translation, actions & speech synthesis without camera
           </span>
         </div>
 
@@ -41,25 +54,60 @@ export default function QuickDemoSim({ onSimulateSign, isDemoActive, onToggleDem
           <div className="demo-disclaimer-banner">
             <Info size={16} className="text-amber-600 shrink-0 mt-0.5" />
             <p className="demo-disclaimer-text">
-              <strong>Simulated Examples Notice:</strong> Clicking these buttons simulates sample predictions through the translation buffer and browser speech synthesis. These are clearly marked as <code>[Simulated Example]</code> to maintain transparency with hackathon judges. Real camera recognition uses the MediaPipe panel above.
+              <strong>Evaluation Simulator:</strong> Clicking any gesture below simulates the AI classification output into the translation buffer, action engine, and SpeechSynthesis voice. These are clearly marked as <code>[Simulated Example]</code> for academic transparency. Real-time camera tracking uses the MediaPipe panel above.
             </p>
           </div>
 
+          {/* Search & Category Filter Bar */}
+          <div className="demo-filters-row">
+            <div className="demo-search-box">
+              <Search size={15} className="demo-search-icon" />
+              <input
+                type="text"
+                placeholder="Search gesture to simulate (e.g. Namaste, Water, Heart)..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="demo-search-input"
+              />
+            </div>
+
+            <div className="demo-category-pills">
+              {CATEGORIES.map(cat => (
+                <button
+                  key={cat}
+                  type="button"
+                  className={`demo-cat-pill ${selectedCategory === cat ? 'is-active' : ''}`}
+                  onClick={() => setSelectedCategory(cat)}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Chips Grid */}
           <div className="demo-chips-grid">
-            {SAMPLE_DEMO_SIGNS.map((item) => (
+            {filteredSigns.map((item) => (
               <button
-                key={item.name}
+                key={item.id}
                 type="button"
                 className="demo-chip-btn"
-                onClick={() => onSimulateSign(item.name, item.confidence)}
-                title={`Simulate sign for "${item.name}"`}
+                onClick={() => onSimulateSign(item.phrase, 0.94, item.category)}
+                title={`Simulate sign for "${item.phrase}" (${item.category})`}
               >
-                <span className="demo-chip-emoji">{item.emoji}</span>
-                <span className="demo-chip-text">{item.name}</span>
+                <span className="demo-chip-emoji">{item.emoji || "✋"}</span>
+                <span className="demo-chip-text">{item.phrase}</span>
                 <span className="demo-chip-sim">Simulate</span>
               </button>
             ))}
           </div>
+
+          {filteredSigns.length === 0 && (
+            <div className="demo-empty-results">
+              <Filter size={18} className="text-slate-400" />
+              <span>No gestures matched &ldquo;{searchQuery}&rdquo;. Try another term or reset the category filter.</span>
+            </div>
+          )}
         </div>
       )}
     </div>

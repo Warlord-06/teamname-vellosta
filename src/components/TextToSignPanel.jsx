@@ -1,22 +1,20 @@
-import React, { useState } from 'react';
-import { Search, Film, Sparkles, X, ArrowRight, BookOpen, AlertCircle } from 'lucide-react';
+import { useState } from 'react';
+import { Search, Film, X, ArrowRight, AlertCircle, BookOpen } from 'lucide-react';
 import { SIGN_PHRASES, findSignPhrase } from '../data/signPhrases';
 import SignVideoPlayer from './SignVideoPlayer';
 
-const CATEGORIES = ["All", "Greetings", "Courtesy", "Emergency & Assistance", "Daily Needs", "Responses", "Expressions"];
+const CATEGORIES = ["All", "Greetings", "Courtesy", "Conversation", "Daily Needs", "Emergency & Assistance", "Responses", "Expressions", "Numbers"];
 
-export default function TextToSignPanel() {
+export default function TextToSignPanel({ onOpenReferenceCharts = null }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedPhrase, setSelectedPhrase] = useState(SIGN_PHRASES[0]); // Default to "Hello"
   const [activeCategory, setActiveCategory] = useState("All");
-  const [hasSearched, setHasSearched] = useState(false);
   const [searchFailedQuery, setSearchFailedQuery] = useState(null);
 
   const handleSearch = (e) => {
     if (e) e.preventDefault();
     if (!searchQuery.trim()) return;
 
-    setHasSearched(true);
     const matched = findSignPhrase(searchQuery);
 
     if (matched) {
@@ -32,13 +30,11 @@ export default function TextToSignPanel() {
     setSelectedPhrase(phrase);
     setSearchQuery(phrase.phrase);
     setSearchFailedQuery(null);
-    setHasSearched(true);
   };
 
   const handleClear = () => {
     setSearchQuery("");
     setSearchFailedQuery(null);
-    setHasSearched(false);
   };
 
   const filteredPhrases = activeCategory === "All" 
@@ -59,6 +55,19 @@ export default function TextToSignPanel() {
               <p className="card-subheading">Type or select a phrase to view verified sign recordings & motion guides</p>
             </div>
           </div>
+
+          {onOpenReferenceCharts && (
+            <button
+              type="button"
+              className="btn-icon-toggle is-active"
+              onClick={onOpenReferenceCharts}
+              title="Open Hand Sign Reference Charts & Catalogue"
+              style={{ padding: '0.45rem 0.9rem', gap: '0.4rem' }}
+            >
+              <BookOpen size={16} />
+              <span className="toggle-label font-medium">Reference Charts</span>
+            </button>
+          )}
         </div>
 
         <form onSubmit={handleSearch} className="search-form">

@@ -6,7 +6,10 @@ import {
   Check, 
   Settings2, 
   Edit3, 
-  Plus
+  Plus,
+  Zap,
+  History,
+  Info
 } from 'lucide-react';
 
 export default function RecognizedText({
@@ -16,10 +19,14 @@ export default function RecognizedText({
   onClear,
   onSpeak,
   isSpeaking,
-  ttsConfig
+  ttsConfig,
+  actionGesturesEnabled = true,
+  setActionGesturesEnabled = null,
+  gestureHistory = []
 }) {
   const [copied, setCopied] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showActionHelp, setShowActionHelp] = useState(false);
 
   const handleCopy = () => {
     if (!textBuffer) return;
@@ -45,26 +52,41 @@ export default function RecognizedText({
             <Volume2 size={18} />
           </div>
           <div>
-            <h2 className="card-heading">Recognized Speech & Text</h2>
+            <h2 className="card-heading">Recognized Speech &amp; Text</h2>
             <p className="card-subheading">Live gesture classification to speech synthesis</p>
           </div>
         </div>
 
-        <button
-          type="button"
-          className={`btn-settings-toggle ${showSettings ? 'is-active' : ''}`}
-          onClick={() => setShowSettings(!showSettings)}
-          aria-label="Toggle Voice & Speech Settings"
-          title="Speech Settings"
-        >
-          <Settings2 size={16} />
-          <span>Voice Controls</span>
-        </button>
+        <div className="card-header-actions">
+          {setActionGesturesEnabled && (
+            <button
+              type="button"
+              className={`btn-action-gestures-toggle ${actionGesturesEnabled ? 'is-enabled' : ''}`}
+              onClick={() => setActionGesturesEnabled(!actionGesturesEnabled)}
+              title="Toggle Hands-Free Gesture Actions (Backspace, Space, Speak, Clear)"
+              aria-label="Toggle Gesture Actions"
+            >
+              <Zap size={14} className={actionGesturesEnabled ? 'text-amber-400' : 'text-slate-400'} />
+              <span>Gesture Actions: {actionGesturesEnabled ? "ON" : "OFF"}</span>
+            </button>
+          )}
+
+          <button
+            type="button"
+            className={`btn-settings-toggle ${showSettings ? 'is-active' : ''}`}
+            onClick={() => setShowSettings(!showSettings)}
+            aria-label="Toggle Voice & Speech Settings"
+            title="Speech Settings"
+          >
+            <Settings2 size={16} />
+            <span>Voice</span>
+          </button>
+        </div>
       </div>
 
       {/* Voice & TTS Settings Drawer */}
       {showSettings && (
-        <div className="tts-settings-panel">
+        <div className="tts-settings-panel animate-fade-in">
           <h4 className="settings-panel-title">Speech Synthesis Configuration</h4>
           <div className="settings-grid">
             {/* Voice Picker */}
@@ -119,6 +141,40 @@ export default function RecognizedText({
         </div>
       )}
 
+      {/* Hands-Free Gesture Actions Guide Card */}
+      {actionGesturesEnabled && (
+        <div className="action-gestures-hint-bar">
+          <div className="action-hint-header" onClick={() => setShowActionHelp(!showActionHelp)}>
+            <div className="hint-header-left">
+              <Zap size={14} className="text-amber-500" />
+              <span className="hint-title">Hands-Free Gesture Shortcuts Active:</span>
+              <span className="hint-summary">👈 Point Left = Backspace | 🤏 Pinch = Space | ✊ Strong Fist = Speak</span>
+            </div>
+            <button type="button" className="hint-expand-btn">
+              <Info size={13} />
+              <span>{showActionHelp ? "Less" : "Details"}</span>
+            </button>
+          </div>
+
+          {showActionHelp && (
+            <div className="action-hint-details animate-fade-in">
+              <div className="action-card-mini">
+                <strong>👈 Point Left:</strong> Deletes the last word from the text buffer.
+              </div>
+              <div className="action-card-mini">
+                <strong>🤏 Small Pinch:</strong> Inserts a space between words.
+              </div>
+              <div className="action-card-mini">
+                <strong>✊ Strong Fist (Hold):</strong> Speaks current sentence aloud.
+              </div>
+              <div className="action-card-mini">
+                <strong>✋ Open Palm Barrier:</strong> Clears the current sentence.
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Current Sign Live Indicator */}
       <div className="active-sign-banner">
         <div className="active-sign-left">
@@ -131,6 +187,9 @@ export default function RecognizedText({
                  activeSign.method === 'ai-pretrained' ? 'MediaPipe AI' :
                  activeSign.method === 'ai-geometric' ? 'Landmark Geometry' : 'AI'}
               </span>
+              {activeSign.category && (
+                <span className="sign-category-pill">{activeSign.category}</span>
+              )}
             </div>
           ) : (
             <span className="active-sign-none">No active sign gesture recognized</span>
@@ -149,6 +208,30 @@ export default function RecognizedText({
           </div>
         )}
       </div>
+
+      {/* Recent Gesture History Breadcrumb */}
+      {gestureHistory.length > 0 && (
+        <div className="gesture-history-strip">
+          <div className="history-label-group">
+            <History size={12} className="text-slate-400" />
+            <span className="history-label">Recent:</span>
+          </div>
+          <div className="history-chips-list">
+            {gestureHistory.slice(-5).map((item, index) => (
+              <button
+                key={index}
+                type="button"
+                className="history-chip"
+                onClick={() => handleAddWord(item.name)}
+                title={`Click to re-insert "${item.name}"`}
+              >
+                <span>{item.name}</span>
+                <span className="history-chip-conf">{Math.round((item.confidence || 0) * 100)}%</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Editable Sentence Area with Text Correction */}
       <div className="text-editor-container">

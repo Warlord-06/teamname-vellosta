@@ -7,7 +7,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { FilesetResolver, GestureRecognizer } from '@mediapipe/tasks-vision';
-import { classifyHandSign, TemporalStabilityFilter } from '../classifier/signClassifier';
+import { classifyHandSign, analyzeHandGeometry, TemporalStabilityFilter } from '../classifier/signClassifier';
 import { renderHandsOnCanvas } from '../utils/drawLandmarks';
 
 // CDN URL for MediaPipe Vision WASM binaries
@@ -28,6 +28,8 @@ export function useHandLandmarker() {
   // Recognition state
   const [status, setStatus] = useState("Initializing AI Engine...");
   const [handDetected, setHandDetected] = useState(false);
+  const [handCount, setHandCount] = useState(0);
+  const [handGeometry, setHandGeometry] = useState(null);
   const [activeSign, setActiveSign] = useState(null);
   const [confirmedSign, setConfirmedSign] = useState(null);
   const [fps, setFps] = useState(0);
@@ -43,7 +45,7 @@ export function useHandLandmarker() {
   const canvasRef = useRef(null);
   const streamRef = useRef(null);
   const animFrameIdRef = useRef(null);
-  const stabilityFilterRef = useRef(new TemporalStabilityFilter(8, 5, 1500));
+  const stabilityFilterRef = useRef(new TemporalStabilityFilter(7, 4, 1300));
   const lastTimeRef = useRef(0);
   const frameCountRef = useRef(0);
   const lastFpsCalcRef = useRef(0);
@@ -111,7 +113,7 @@ export function useHandLandmarker() {
       if (recognizerRef.current) {
         try {
           recognizerRef.current.close?.();
-        } catch (e) {
+        } catch (_cleanupErr) {
           // ignore cleanup errors
         }
       }
@@ -163,11 +165,16 @@ export function useHandLandmarker() {
 
         if (handsLandmarks.length > 0) {
           setHandDetected(true);
+          setHandCount(handsLandmarks.length);
 
           // Classify primary detected hand
           const primaryHandLandmarks = handsLandmarks[0];
           const primaryHandedness = handednesses[0]?.[0]?.categoryName || "Right";
           const primaryGestures = gestures[0] || [];
+
+          // Extract real-time hand geometry for the Hand Anatomy HUD
+          const geo = analyzeHandGeometry(primaryHandLandmarks, primaryHandedness);
+          setHandGeometry(geo);
 
           const prediction = classifyHandSign(
             primaryHandLandmarks,
@@ -190,7 +197,7 @@ export function useHandLandmarker() {
               });
             }
           } else {
-            setStatus("Detecting hands (holding position...)");
+            setStatus(handsLandmarks.length > 1 ? "Tracking 2 hands (holding gesture...)" : "Detecting hand (holding position...)");
           }
 
           // Draw skeleton on canvas overlay
@@ -206,6 +213,8 @@ export function useHandLandmarker() {
           }
         } else {
           setHandDetected(false);
+          setHandCount(0);
+          setHandGeometry(null);
           setActiveSign(null);
           setStatus("No hand detected. Hold hand in front of camera.");
           stabilityFilterRef.current.reset();
@@ -300,6 +309,8 @@ export function useHandLandmarker() {
 
     setIsCameraActive(false);
     setHandDetected(false);
+    setHandCount(0);
+    setHandGeometry(null);
     setActiveSign(null);
     setFps(0);
     stabilityFilterRef.current.reset();
@@ -324,12 +335,14 @@ export function useHandLandmarker() {
   }, [isCameraActive, detectLoop]);
 
   // 5. Trigger Simulated Sign (Demo Mode)
-  const simulateSign = (signName, confidence = 0.95) => {
+  const simulateSign = (signName, confidence = 0.95, category = "General", action = null) => {
     const simPrediction = {
       name: signName,
       phrase: signName,
       confidence: confidence,
       method: "simulated-demo",
+      category: category,
+      action: action,
       timestamp: Date.now()
     };
     setActiveSign(simPrediction);
@@ -350,6 +363,8 @@ export function useHandLandmarker() {
     permissionDenied,
     status,
     handDetected,
+    handCount,
+    handGeometry,
     fps,
 
     // Detection output

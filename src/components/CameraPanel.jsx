@@ -1,4 +1,4 @@
-import React from 'react';
+import { useState } from 'react';
 import { 
   Camera, 
   CameraOff, 
@@ -9,7 +9,10 @@ import {
   Hand, 
   AlertCircle, 
   Sparkles,
-  RefreshCw
+  RefreshCw,
+  Zap,
+  BookOpen,
+  Sliders
 } from 'lucide-react';
 
 export default function CameraPanel({
@@ -17,11 +20,12 @@ export default function CameraPanel({
   canvasRef,
   isCameraActive,
   isModelLoading,
-  modelError,
   cameraError,
   permissionDenied,
   status,
   handDetected,
+  handCount = 0,
+  handGeometry = null,
   fps,
   isMirrored,
   setIsMirrored,
@@ -29,8 +33,12 @@ export default function CameraPanel({
   setShowLandmarks,
   onStartCamera,
   onStopCamera,
-  activeSign
+  activeSign,
+  actionNotice = null,
+  onOpenCheatSheet = null
 }) {
+  const [showAnatomyHud, setShowAnatomyHud] = useState(true);
+
   return (
     <div className="camera-card">
       {/* Camera Header Bar */}
@@ -41,7 +49,7 @@ export default function CameraPanel({
           </div>
           <div>
             <h2 className="card-heading">Live Camera Stream</h2>
-            <p className="card-subheading">MediaPipe Hand Landmarker detection</p>
+            <p className="card-subheading">MediaPipe 3D Hand Tracking &amp; Gesture Engine</p>
           </div>
         </div>
 
@@ -51,7 +59,7 @@ export default function CameraPanel({
             <div className={`status-pill ${handDetected ? 'pill-detected' : 'pill-seeking'}`}>
               <span className="pulse-indicator"></span>
               {handDetected ? (
-                <span>Hand In Frame</span>
+                <span>{handCount > 1 ? "2 Hands in Frame" : "Hand in Frame"}</span>
               ) : (
                 <span>Awaiting Hand</span>
               )}
@@ -94,17 +102,21 @@ export default function CameraPanel({
               </div>
               <h3 className="empty-heading">Camera is Currently Offline</h3>
               <p className="empty-body">
-                Click <strong>Start Camera</strong> to enable real-time hand landmark tracking and gesture recognition.
+                Click <strong>Start Camera</strong> to enable real-time 3D joint landmark tracking and sign recognition.
               </p>
               
               <div className="empty-features-list">
                 <div className="empty-feature-item">
                   <span className="dot-bullet"></span>
-                  <span>Tracks 21 3D hand joints with MediaPipe</span>
+                  <span>Tracks 21 3D hand joints with MediaPipe Tasks Vision</span>
                 </div>
                 <div className="empty-feature-item">
                   <span className="dot-bullet"></span>
-                  <span>100% private: processed locally on your device</span>
+                  <span>100% private: runs entirely inside your browser</span>
+                </div>
+                <div className="empty-feature-item">
+                  <span className="dot-bullet"></span>
+                  <span>Recognizes 30+ single &amp; two-handed gestures</span>
                 </div>
               </div>
 
@@ -165,7 +177,7 @@ export default function CameraPanel({
               <h3 className="error-heading">Camera Device Unavailable</h3>
               <p className="error-body">{cameraError}</p>
               <p className="text-xs text-slate-400 mt-2">
-                Tip: You can continue exploring using the <strong>Demo Mode</strong> simulation below!
+                Tip: You can continue exploring using the <strong>Demo Simulator</strong> below!
               </p>
               <button
                 type="button"
@@ -175,6 +187,14 @@ export default function CameraPanel({
                 <RefreshCw size={16} />
                 <span>Retry Connection</span>
               </button>
+            </div>
+          )}
+
+          {/* Action Gesture Banner Toast */}
+          {actionNotice && (
+            <div className="action-gesture-banner animate-bounce-subtle">
+              <Zap size={16} className="text-amber-300 animate-pulse" />
+              <span className="action-banner-text">{actionNotice}</span>
             </div>
           )}
 
@@ -190,6 +210,70 @@ export default function CameraPanel({
           )}
         </div>
       </div>
+
+      {/* Real-Time Hand Anatomy Inspector HUD */}
+      {isCameraActive && showAnatomyHud && (
+        <div className="anatomy-hud-card animate-fade-in">
+          <div className="hud-header-bar">
+            <div className="hud-title-row">
+              <Sliders size={13} className="text-indigo-400" />
+              <span className="hud-label">Live Hand Anatomy Inspector:</span>
+            </div>
+            {handGeometry ? (
+              <span className="hud-hands-count">{handCount} Hand{handCount > 1 ? "s" : ""} Analyzed</span>
+            ) : (
+              <span className="hud-waiting">Awaiting hand in camera view...</span>
+            )}
+          </div>
+
+          {handGeometry ? (
+            <div className="hud-pills-grid">
+              <div className={`hud-finger-pill ${handGeometry.isThumbExtended || handGeometry.isThumbUp ? 'pill-active' : ''}`}>
+                <span className="finger-label">Thumb:</span>
+                <span className="finger-state">{handGeometry.fingerStates?.thumb || (handGeometry.isThumbExtended ? "Extended" : "Curled")}</span>
+              </div>
+              <div className={`hud-finger-pill ${handGeometry.isIndexExtended ? 'pill-active' : ''}`}>
+                <span className="finger-label">Index:</span>
+                <span className="finger-state">{handGeometry.fingerStates?.index || (handGeometry.isIndexExtended ? "Extended" : "Curled")}</span>
+              </div>
+              <div className={`hud-finger-pill ${handGeometry.isMiddleExtended ? 'pill-active' : ''}`}>
+                <span className="finger-label">Middle:</span>
+                <span className="finger-state">{handGeometry.isMiddleExtended ? "Extended" : "Curled"}</span>
+              </div>
+              <div className={`hud-finger-pill ${handGeometry.isRingExtended ? 'pill-active' : ''}`}>
+                <span className="finger-label">Ring:</span>
+                <span className="finger-state">{handGeometry.isRingExtended ? "Extended" : "Curled"}</span>
+              </div>
+              <div className={`hud-finger-pill ${handGeometry.isPinkyExtended ? 'pill-active' : ''}`}>
+                <span className="finger-label">Pinky:</span>
+                <span className="finger-state">{handGeometry.isPinkyExtended ? "Extended" : "Curled"}</span>
+              </div>
+              {handGeometry.isPinchSmall && (
+                <div className="hud-finger-pill pill-special">
+                  <span className="finger-label">Pinch:</span>
+                  <span className="finger-state">Active 🤏</span>
+                </div>
+              )}
+              {handGeometry.isRockOn && (
+                <div className="hud-finger-pill pill-special">
+                  <span className="finger-label">Horns:</span>
+                  <span className="finger-state">Rock On 🤘</span>
+                </div>
+              )}
+              {handGeometry.isCrossedFingers && (
+                <div className="hud-finger-pill pill-special">
+                  <span className="finger-label">Crossed:</span>
+                  <span className="finger-state">Good Luck 🤞</span>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="hud-empty-hint">
+              <span>Show hand to see real-time joint angles, curl states, and geometry telemetry</span>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Camera Toolbar & Controls */}
       <div className="camera-toolbar">
@@ -225,6 +309,30 @@ export default function CameraPanel({
 
         {/* Viewport display toggles */}
         <div className="toolbar-right">
+          {onOpenCheatSheet && (
+            <button
+              type="button"
+              className="btn-icon-toggle"
+              onClick={onOpenCheatSheet}
+              title="Open Gesture Guide & Cheat Sheet"
+              aria-label="Gesture Guide"
+            >
+              <BookOpen size={16} />
+              <span className="toggle-label">Guide</span>
+            </button>
+          )}
+
+          <button
+            type="button"
+            className={`btn-icon-toggle ${showAnatomyHud ? 'is-active' : ''}`}
+            onClick={() => setShowAnatomyHud(!showAnatomyHud)}
+            title="Toggle Hand Anatomy HUD"
+            aria-label="Toggle Anatomy HUD"
+          >
+            <Sliders size={16} />
+            <span className="toggle-label">HUD</span>
+          </button>
+
           <button
             type="button"
             className={`btn-icon-toggle ${isMirrored ? 'is-active' : ''}`}
@@ -232,7 +340,7 @@ export default function CameraPanel({
             title={isMirrored ? "Mirror View On" : "Mirror View Off"}
             aria-label="Toggle Mirror Camera"
           >
-            <FlipHorizontal size={17} />
+            <FlipHorizontal size={16} />
             <span className="toggle-label">Mirror</span>
           </button>
 
@@ -243,7 +351,7 @@ export default function CameraPanel({
             title={showLandmarks ? "Landmarks Visible" : "Landmarks Hidden"}
             aria-label="Toggle Landmark Skeleton"
           >
-            {showLandmarks ? <Eye size={17} /> : <EyeOff size={17} />}
+            {showLandmarks ? <Eye size={16} /> : <EyeOff size={16} />}
             <span className="toggle-label">Skeleton</span>
           </button>
         </div>
